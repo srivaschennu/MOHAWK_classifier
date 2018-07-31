@@ -1,1 +1,1 @@
-filepath='/Volumes/bigdisk/Data/MOHAWK/';
+filepath = '\\unicorn\userdata\sc785\Data\MOHAWK\';

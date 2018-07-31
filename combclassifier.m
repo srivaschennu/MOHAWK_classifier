@@ -89,6 +89,7 @@ confmat = NaN(numgroups,numgroups,param.nclsyfyrs,numruns);
 [trainperf,perfsort] = sort(arrayfun(@(x) mean(x.perf),clsyfyr),'descend');
 trainperf = trainperf(1:param.nclsyfyrs);
 clsyfyrorder = clsyfyrinfo.clsyfyrparam(perfsort,:);
+allbel = ones(length(truelabels),numgroups,param.nclsyfyrs,numruns);
 
 fprintf('CV run');
 for c = 1:numruns
@@ -115,7 +116,7 @@ for c = 1:numruns
             end
         end
         bel = bel ./ repmat(sum(bel,2),1,size(bel,2));
-        [roc(k,c).fpr, roc(k,c).tpr] = perfcurve(truelabels,bel(:,2),max(truelabels));
+%         [roc(k,c).fpr, roc(k,c).tpr] = perfcurve(truelabels,bel(:,2),max(truelabels));
         predlabels = round(sum(bel .* repmat(1:size(bel,2),size(bel,1),1),2));
         predlabels = predlabels - 1;
 
@@ -125,6 +126,8 @@ for c = 1:numruns
         normcm = cm ./ repmat(sum(cm,2),1,size(cm,2));
         combperf(k,c) = mean(diag(normcm));
         combclassperf(k,:,c) = diag(normcm);
+        
+        allbel(:,:,k,c) = bel;
     end
 end
 
@@ -165,10 +168,24 @@ ylabel('Accuracy','FontName','Helvetica','FontSize',fontsize);
 plot([bestk bestk],ylim,...
     'LineStyle','-','LineWidth',1.5,'Color','red','DisplayName','Peak accuracy');
 
-figure('Color','white');
-plot(roc(bestk,1).fpr,roc(bestk,1).tpr,'LineWidth',2);
-set(gca,'FontName','Helvetica','FontSize',fontsize);
-xlabel('False Positive Rate','FontName','Helvetica','FontSize',fontsize);
-ylabel('True Positive Rate','FontName','Helvetica','FontSize',fontsize);
+% figure('Color','white');
+% plot(roc(bestk,1).fpr,roc(bestk,1).tpr,'LineWidth',2);
+% set(gca,'FontName','Helvetica','FontSize',fontsize);
+% xlabel('False Positive Rate','FontName','Helvetica','FontSize',fontsize);
+% ylabel('True Positive Rate','FontName','Helvetica','FontSize',fontsize);
 
 plotconfusionmat(sum(confmat(:,:,bestk,:),4),groupnames);
+
+figure('Color','white');
+figpos = get(gcf,'Position');
+figpos(3) = figpos(3)*1/2;
+set(gcf,'Position',figpos);
+
+boxh = notBoxPlot(mean(allbel(:,2,bestk,:),4),truelabels+1,0.5,'patch',ones(size(truelabels,1),1));
+for h = 1:length(boxh)
+    set(boxh(h).data,'Color',colorlist(h,:),'MarkerFaceColor',facecolorlist(h,:))
+end
+set(gca,'FontName','Helvetica','FontSize',fontsize);
+set(gca,'XLim',[0.5 numgroups+0.5],'XTick',1:numgroups,...
+        'XTickLabel',groupnames','FontName','Helvetica','FontSize',fontsize);
+ylabel('Probability','FontName','Helvetica','FontSize',fontsize);
