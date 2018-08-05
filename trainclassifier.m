@@ -13,7 +13,7 @@ param = finputcheck(varargin, {
 holdout = 0.15;
 pcaVarExpl = 95/100;
 clsyfyropt = {'Standardize',true};
-innercvparam = {'Prior',param.prior,'FitPosterior',true};
+innercvparam = {'Prior',param.prior};
 
 switch type
     case 'knn'
@@ -150,9 +150,8 @@ for f = 1:numfolds
             [clsyfyr.perf(f),clsyfyr.cm(:,:,f)] = getperf(fitcecoc(trainfeat, trainlabels, innercvparam{:}, ...
                 'Learners', learners), trainlabels);
             
-            model = fitcecoc(trainfeat, trainlabels, 'Prior', param.prior, 'FitPosterior',true, 'Learners', learners);
-            [clsyfyr.predlabels(testidx,f),~,~,postProb] = predict(model, testfeat);
-            clsyfyr.postprob(testidx,f) = postProb(:,2);
+            model = fitcecoc(trainfeat, trainlabels, 'Prior', param.prior, 'Learners', learners);
+            clsyfyr.predlabels(testidx,f) = predict(model, testfeat);
             
         case 'nn'
             innercvparam = cvpartition(trainlabels,'HoldOut',holdout);
@@ -187,7 +186,6 @@ for f = 1:numfolds
             
             clsyfyr.predlabels(testidx,f) = ...
                 vec2ind(compet(outputs(:,model.divideParam.testInd)))-1;
-            clsyfyr.postprob(testidx,f) = outputs(2,model.divideParam.testInd)';
     end
     if strcmp(param.mode,'holdout')
         cm = confusionmat(testlabels, clsyfyr.predlabels(testidx,f), 'order', unique(testlabels));

@@ -138,6 +138,8 @@ hold all
 
 combperf = combperf * 100; testperf = testperf * 100; trainperf = trainperf * 100; combclassperf = combclassperf * 100;
 
+save(sprintf('%s/combclassifier.mat', filepath), 'clsyfyrlist','combperf','combclassperf','trainperf','testperf','allbel','truelabels');
+
 combperf = mean(combperf,2);
 testperf = mean(testperf,2);
 
@@ -186,6 +188,6 @@ for h = 1:length(boxh)
     set(boxh(h).data,'Color',colorlist(h,:),'MarkerFaceColor',facecolorlist(h,:))
 end
 set(gca,'FontName','Helvetica','FontSize',fontsize);
-set(gca,'XLim',[0.5 numgroups+0.5],'XTick',1:numgroups,...
+set(gca,'XLim',[0.5 numgroups+0.5], 'YLim',[0 1], 'XTick',1:numgroups,...
         'XTickLabel',groupnames','FontName','Helvetica','FontSize',fontsize);
 ylabel('Probability','FontName','Helvetica','FontSize',fontsize);
