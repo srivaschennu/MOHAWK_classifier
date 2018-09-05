@@ -30,14 +30,11 @@ loadsubj
 %     'runclassifier' '{''nn'' ''runpca'' ''true'' ''mode'' ''train''}'
 %     'runclassifier' '{''nbayes'' ''runpca'' ''true'' ''mode'' ''train''}'
 
-loadpaths
-loadsubj
-
 subjlist = eval(listname);
 
 loadcovariates
 
-load 173to91.mat
+% load 173to91.mat
 
 groupvar = eval(param.group);
 
@@ -171,7 +168,7 @@ for f = 1:size(featlist,1)
         clsyfyrparam{taskidx,3} = trange(d);
         clsyfyrparam{taskidx,4} = funcargs;
 
-        args = [{[covariates features(:,:,d)], groupvar}, funcargs];
+        args = [{features(:,:,d), groupvar}, funcargs {'covariates' covariates}];
         
         if strcmp(runmode,'serial')
             outputs = cat(1,outputs,funcname( args{:} ));

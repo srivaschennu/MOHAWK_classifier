@@ -7,11 +7,9 @@ param = finputcheck(varargin, {
     });
 
 loadpaths
-loadsubj
 
-load(sprintf('%sgroupdata_%s.mat',filepath,listname),'subjlist','bandpower');
+load(sprintf('%sgroupdata_%s.mat',filepath,listname),'bandpower','subjlist');
 
-loadcovariates
 changroups
 
 switch size(bandpower,3)
@@ -45,7 +43,7 @@ elseif strcmpi(measure,'refdiag')
 elseif strcmpi(measure,'demo')
     features = [etiology daysonset];
 elseif strcmpi(measure,'subjnum')
-    features = cellfun(@(x) str2num(x(2:3)), subjlist(:,1));
+    features = cellfun(@(x) str2num(x(2:3)), subjlist.name);
 else
     load(sprintf('%s/groupdata_%s.mat',filepath,listname),'graph','tvals');
     m = strcmpi(measure,graph(:,1));

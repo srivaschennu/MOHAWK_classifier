@@ -4,7 +4,7 @@ rng('default');
 
 param = finputcheck(varargin, {
     'oversample', 'string', {'true','false'}, 'true'; ...
-    'mode', 'string', {'cv','holdout','train'}, 'cv'; ...
+    'mode', 'string', {'cv','holdout','train', 'losocv'}, 'cv'; ...
     'runpca', 'string', {'true','false'}, 'false'; ...
     'prior', 'string', {'empirical','uniform'}, 'uniform'; ...
     'covariates', 'float', [], [], ...
@@ -47,6 +47,17 @@ if strcmp(param.mode,'cv')
     for f = 2:numcvruns
         outercv(f) = repartition(outercv(f-1));
     end
+elseif strcmp(param.mode,'losocv')
+    numcvruns = 1;
+    subjidx = param.covariates;
+    param.covariates = [];
+    uniqsubj = unique(subjidx);
+    numcvfolds = length(uniqsubj);
+    numfolds = numcvfolds*numcvruns;
+    for s = 1:numcvfolds
+        outercv(s).training = true(size(subjidx));
+        outercv(s).training(subjidx == uniqsubj(s)) = 0;
+    end
 elseif strcmp(param.mode,'holdout')
     holdout = 0.15;
     outercv = cvpartition(labels,'HoldOut',holdout);
@@ -65,13 +76,20 @@ clsyfyr.truelabels = labels;
 clsyfyr.predlabels = NaN(size(labels,1),numfolds);
 clsyfyr.postprob = NaN(size(labels,1),numfolds);
 
-fprintf('Outer fold');
+fprintf('Outer fold ');
 for f = 1:numfolds
-    fprintf(' %d',f);
+    if f > 1
+        fprintf(repmat('\b',1,length(progstr)));
+    end
+    progstr = sprintf('%d/%d',f,numfolds);
+    fprintf('%s',progstr);
     
     if strcmp(param.mode,'cv')
         trainidx = training(outercv(floor((f-1)/numcvfolds)+1),mod((f-1),numcvfolds)+1);
         testidx = test(outercv(floor((f-1)/numcvfolds)+1),mod((f-1),numcvfolds)+1);
+    elseif strcmp(param.mode,'losocv')
+        trainidx = outercv(f).training;
+        testidx = ~trainidx;
     elseif strcmp(param.mode,'train')
         trainidx = training(outercv(f));
         testidx = ~trainidx;
@@ -195,7 +213,7 @@ for f = 1:numfolds
 end
 fprintf('\nDone.\n');
 
-if strcmp(param.mode,'cv')
+if strcmp(param.mode,'cv') || strcmp(param.mode,'losocv')
     for f = 1:numfolds/numcvfolds
         cm = confusionmat(labels, nansum(clsyfyr.predlabels(:,(f-1)*numcvfolds+1:f*numcvfolds),2), 'order', unique(labels));
         clsyfyr.testcm(:,:,f) = cm;
