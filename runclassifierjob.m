@@ -16,7 +16,6 @@ end
 
 % runmode = serial, local or phoenix
 loadpaths
-loadsubj
 
 %     'runclassifier' '{''svm-rbf'' ''runpca'' ''false'' ''mode'' ''cv''}'
 %     'runclassifier' '{''knn'' ''runpca'' ''true'' ''mode'' ''cv''}'
@@ -30,19 +29,16 @@ loadsubj
 %     'runclassifier' '{''nn'' ''runpca'' ''true'' ''mode'' ''train''}'
 %     'runclassifier' '{''nbayes'' ''runpca'' ''true'' ''mode'' ''train''}'
 
-subjlist = eval(listname);
-
-loadcovariates
-
 % load 173to91.mat
 
-groupvar = eval(param.group);
+load(sprintf('%s/groupdata_%s.mat',filepath,listname),'subjlist');
+groupvar = subjlist.(param.group);
 
 if ~isempty(param.regroup)
     groupvar(groupvar == param.regroup(1)) = param.regroup(2);
 end
 
-trange = 0.9:-0.1:0.1;
+trange = 0.1:-0.1:0.1;
 
 bands = {
     'delta'
@@ -78,6 +74,9 @@ featlist = {
     'modular span',1
     'modular span',2
     'modular span',3
+    'mutual information',1
+    'mutual information',2
+    'mutual information',3    
     };
 
 selgroupidx = ismember(groupvar,param.groups);

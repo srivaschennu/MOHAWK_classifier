@@ -8,7 +8,6 @@ param = finputcheck(varargin, {
     });
 
 loadpaths
-loadsubj
 
 colorlist = [
     0 0.0 0.5
@@ -130,15 +129,14 @@ for c = 1:numruns
         allbel(:,:,k,c) = bel;
     end
 end
-
 fprintf('\nDone.\n');
+
 fig_h = figure('Color','white','Name',cell2mat(clsyfyrlist));
 % fig_h.Position(3) = fig_h.Position(3) * 1.5;
 hold all
 
 combperf = combperf * 100; testperf = testperf * 100; trainperf = trainperf * 100; combclassperf = combclassperf * 100;
 
-save(sprintf('%s/combclassifier.mat', filepath), 'clsyfyrlist','combperf','combclassperf','trainperf','testperf','allbel','truelabels');
 
 combperf = mean(combperf,2);
 testperf = mean(testperf,2);
@@ -161,7 +159,7 @@ plot([1 bestk],[combperf(bestk) combperf(bestk)],'LineStyle',':','LineWidth',1.5
 plot([1 besttest],[testperf(besttest) testperf(besttest)],'LineStyle',':','LineWidth',1.5,'Color','black');
 
 xlim([1 param.nclsyfyrs]);
-
+ylim([0 100]);
 set(gca,'FontName','Helvetica','FontSize',fontsize);
 xlabel('Number of classifiers','FontName','Helvetica','FontSize',fontsize);
 ylabel('Accuracy','FontName','Helvetica','FontSize',fontsize);
@@ -177,6 +175,7 @@ plot([bestk bestk],ylim,...
 % ylabel('True Positive Rate','FontName','Helvetica','FontSize',fontsize);
 
 plotconfusionmat(sum(confmat(:,:,bestk,:),4),groupnames);
+plotconfusionmat(sum(clsyfyr(perfsort(1)).cm,3),groupnames);
 
 figure('Color','white');
 figpos = get(gcf,'Position');
@@ -191,3 +190,7 @@ set(gca,'FontName','Helvetica','FontSize',fontsize);
 set(gca,'XLim',[0.5 numgroups+0.5], 'YLim',[0 1], 'XTick',1:numgroups,...
         'XTickLabel',groupnames','FontName','Helvetica','FontSize',fontsize);
 ylabel('Probability','FontName','Helvetica','FontSize',fontsize);
+
+allbel = mean(allbel(:,2,bestk,:),4);
+perfsort = perfsort(1:bestk);
+save(sprintf('%s/combclsyfyr_%s.mat', filepath, strtok(clsyfyrlist{1},'_')), 'clsyfyrinfo','perfsort','allbel','truelabels');

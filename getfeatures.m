@@ -46,14 +46,21 @@ elseif strcmpi(measure,'subjnum')
     features = cellfun(@(x) str2num(x(2:3)), subjlist.name);
 else
     load(sprintf('%s/groupdata_%s.mat',filepath,listname),'graph','tvals');
-    m = strcmpi(measure,graph(:,1));
-    features = squeeze(graph{m,weiorbin}(:,bandidx,:,:));
-
+    
     %round down to 3 decimal places
     precision = 3;
     threshidx = ismember(round(tvals * 10^precision),round(param.trange * 10^precision));
     if ~all(round(tvals(threshidx) * 10^precision) == round(param.trange * 10^precision))
         error('getfeatures: some requested thresholds not found!');
     end
-    features = features(:,threshidx,:);
+    
+    m = strcmpi(measure,graph(:,1));
+    
+    if strcmpi(measure,'mutual information')
+        features = mean(graph{m,weiorbin}(:,subjlist.crsdiag == 5,bandidx,threshidx),4);
+        features = permute(features,[1 3 2]);
+    else
+        features = squeeze(graph{m,weiorbin}(:,bandidx,:,:));
+        features = features(:,threshidx,:);
+    end
 end

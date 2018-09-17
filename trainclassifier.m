@@ -12,8 +12,8 @@ param = finputcheck(varargin, {
 
 holdout = 0.15;
 pcaVarExpl = 95/100;
-clsyfyropt = {'Standardize',true};
-innercvparam = {'Prior',param.prior};
+learneropt = {'Standardize',true};
+clsyfyropt = {'Prior',param.prior,'FitPosterior','on'};
 
 switch type
     case 'knn'
@@ -37,7 +37,7 @@ switch type
         hyperparam = {};
 end
 
-innercvparam = [innercvparam,{'Kfold',4}];
+innercvparam = [clsyfyropt,{'Kfold',4}];
 numcvfolds = NaN;
 if strcmp(param.mode,'cv')
     numcvruns = 25;
@@ -141,22 +141,22 @@ for f = 1:numfolds
     switch type
         case {'knn' 'svm-linear' 'svm-rbf' 'tree' 'nbayes'}
             if ~isempty(hyperparam)
-                perf = gridsearch(trainfeat, trainlabels, type, innercvparam, clsyfyropt, hyperparam);
+                perf = gridsearch(trainfeat, trainlabels, type, innercvparam, learneropt, hyperparam);
                 [~,maxidx] = max(perf(:));
             end
             
             switch type
                 case 'knn'
                     bestN = ind2sub(size(perf),maxidx);
-                    learners = templateKNN(clsyfyropt{:},'NumNeighbors', Nvals(bestN));
+                    learners = templateKNN(learneropt{:},'NumNeighbors', Nvals(bestN));
                     
                 case 'svm-linear'
-                    [bestC] = ind2sub(size(perf),maxidx);
-                    learners = templateSVM(clsyfyropt{:},'BoxConstraint',Cvals(bestC));
+                    bestC = ind2sub(size(perf),maxidx);
+                    learners = templateSVM(learneropt{:},'BoxConstraint',Cvals(bestC));
                     
                 case 'svm-rbf'
                     [bestC,bestK] = ind2sub(size(perf),maxidx);
-                    learners = templateSVM(clsyfyropt{:},'KernelFunction','RBF','BoxConstraint',Cvals(bestC),'KernelScale',Kvals(bestK));
+                    learners = templateSVM(learneropt{:},'KernelFunction','RBF','BoxConstraint',Cvals(bestC),'KernelScale',Kvals(bestK));
                     
                 case 'tree'
                     bestL = ind2sub(size(perf),maxidx);
@@ -165,50 +165,54 @@ for f = 1:numfolds
                 case 'nbayes'
                     learners = templateNaiveBayes('DistributionNames', 'kernel');
             end
-            [clsyfyr.perf(f),clsyfyr.cm(:,:,f)] = getperf(fitcecoc(trainfeat, trainlabels, innercvparam{:}, ...
+            [clsyfyr.perf(f),clsyfyr.cm(:,:,f),bestthresh] = getperf(fitcecoc(trainfeat, trainlabels, innercvparam{:}, ...
                 'Learners', learners), trainlabels);
             
-            model = fitcecoc(trainfeat, trainlabels, 'Prior', param.prior, 'Learners', learners);
-            clsyfyr.predlabels(testidx,f) = predict(model, testfeat);
+            model = fitcecoc(trainfeat, trainlabels, clsyfyropt{:}, 'Learners', learners);
+            if strcmp(model.ScoreType,'probability')
+                [~,~,~,postprob] = predict(model, testfeat);
+                clsyfyr.predlabels(testidx,f) = double(postprob(:,end) > bestthresh);
+            else
+                clsyfyr.predlabels(testidx,f) = predict(model, testfeat);
+            end
             
-        case 'nn'
-            innercvparam = cvpartition(trainlabels,'HoldOut',holdout);
-            itrainfeat = trainfeat(training(innercvparam),:);
-            itrainlabels = trainlabels(training(innercvparam));
-            ivalfeat = trainfeat(test(innercvparam),:);
-            ivallabels = trainlabels(test(innercvparam));
-            
-            thisfeat = cat(1,itrainfeat,ivalfeat,testfeat);
-            thislab = cat(1,itrainlabels,ivallabels,testlabels);
-            
-            hiddenLayerSize = size(thisfeat,2)*2;
-            model = patternnet(hiddenLayerSize);
-            model.trainParam.showWindow = 0;
-            
-            model.divideFcn = 'divideind';
-            model.divideParam.trainInd = 1:length(itrainlabels);
-            model.divideParam.valInd = length(itrainlabels)+1:length(itrainlabels)+length(ivallabels);
-            model.divideParam.testInd = length(itrainlabels)+length(ivallabels)+1:...
-                length(itrainlabels)+length(ivallabels)+length(testlabels);
-            
-            inputs = thisfeat';
-            targets = full(ind2vec(thislab'+1));
-            model = train(model,inputs,targets);
-            outputs = model(inputs);
-            
-            [~,cm] = confusion(targets(:,model.divideParam.valInd),...
-                outputs(:,model.divideParam.valInd));
-            clsyfyr.cm(:,:,f) = cm;
-            normcm = cm ./ repmat(sum(cm,2),1,size(cm,2));
-            clsyfyr.perf(f) = mean(diag(normcm));
-            
-            clsyfyr.predlabels(testidx,f) = ...
-                vec2ind(compet(outputs(:,model.divideParam.testInd)))-1;
+%         case 'nn'
+%             innercvparam = cvpartition(trainlabels,'HoldOut',holdout);
+%             itrainfeat = trainfeat(training(innercvparam),:);
+%             itrainlabels = trainlabels(training(innercvparam));
+%             ivalfeat = trainfeat(test(innercvparam),:);
+%             ivallabels = trainlabels(test(innercvparam));
+%             
+%             thisfeat = cat(1,itrainfeat,ivalfeat,testfeat);
+%             thislab = cat(1,itrainlabels,ivallabels,testlabels);
+%             
+%             hiddenLayerSize = size(thisfeat,2)*2;
+%             model = patternnet(hiddenLayerSize);
+%             model.trainParam.showWindow = 0;
+%             
+%             model.divideFcn = 'divideind';
+%             model.divideParam.trainInd = 1:length(itrainlabels);
+%             model.divideParam.valInd = length(itrainlabels)+1:length(itrainlabels)+length(ivallabels);
+%             model.divideParam.testInd = length(itrainlabels)+length(ivallabels)+1:...
+%                 length(itrainlabels)+length(ivallabels)+length(testlabels);
+%             
+%             inputs = thisfeat';
+%             targets = full(ind2vec(thislab'+1));
+%             model = train(model,inputs,targets);
+%             outputs = model(inputs);
+%             
+%             [~,cm] = confusion(targets(:,model.divideParam.valInd),...
+%                 outputs(:,model.divideParam.valInd));
+%             clsyfyr.cm(:,:,f) = cm;
+%             clsyfyr.perf(f) = cm2perf(cm);
+%             
+%             clsyfyr.predlabels(testidx,f) = ...
+%                 vec2ind(compet(outputs(:,model.divideParam.testInd)))-1;
     end
     if strcmp(param.mode,'holdout')
         cm = confusionmat(testlabels, clsyfyr.predlabels(testidx,f), 'order', unique(testlabels));
         clsyfyr.testcm(:,:,f) = cm;
-        clsyfyr.testperf(f) = mean( diag( cm ./ repmat(sum(cm,2),1,size(cm,2)) ) );
+        clsyfyr.testperf(f) = cm2perf(cm);
     end
 end
 fprintf('\nDone.\n');
@@ -217,12 +221,12 @@ if strcmp(param.mode,'cv') || strcmp(param.mode,'losocv')
     for f = 1:numfolds/numcvfolds
         cm = confusionmat(labels, nansum(clsyfyr.predlabels(:,(f-1)*numcvfolds+1:f*numcvfolds),2), 'order', unique(labels));
         clsyfyr.testcm(:,:,f) = cm;
-        clsyfyr.testperf(f) = mean( diag( cm ./ repmat(sum(cm,2),1,size(cm,2)) ) );
+        clsyfyr.testperf(f) = cm2perf(cm);
     end
 end
 
 clsyfyr.funcopt = param;
-clsyfyr.clsyfyropt = clsyfyropt;
+clsyfyr.learneropt = learneropt;
 clsyfyr.cvopt = innercvparam;
 clsyfyr.numfolds = numfolds;
 clsyfyr.numcvfolds = numcvfolds;
@@ -235,7 +239,7 @@ end
 
 end
 
-function perf = gridsearch(features,labels,type,cvopt,clsyfyropt,hyperparam)
+function perf = gridsearch(features,labels,type,cvopt,learneropt,hyperparam)
 
 switch type
     case 'knn'
@@ -243,16 +247,16 @@ switch type
         perf = zeros(size(Nvals));
         for n = 1:length(Nvals)
             model = fitcecoc(features,labels,cvopt{:}, ...
-                'Learners',templateKNN(clsyfyropt{:},'NumNeighbors',Nvals(n)));
+                'Learners',templateKNN(learneropt{:},'NumNeighbors',Nvals(n)));
             perf(n) = getperf(model,labels);
         end
         
     case 'svm-linear'
         Cvals = hyperparam{1};
-        perf = zeros(length(Cvals));
+        perf = zeros(size(Cvals));
         for c = 1:length(Cvals)
             model = fitcecoc(features,labels,cvopt{:}, ...
-                'Learners',templateSVM(clsyfyropt{:},'BoxConstraint',Cvals(c)));
+                'Learners',templateSVM(learneropt{:},'BoxConstraint',Cvals(c)));
             perf(c) = getperf(model,labels);
         end
         
@@ -263,7 +267,7 @@ switch type
         for c = 1:length(Cvals)
             for k = 1:length(Kvals)
                 model = fitcecoc(features,labels,cvopt{:}, ...
-                    'Learners',templateSVM(clsyfyropt{:},'KernelFunction','RBF',...
+                    'Learners',templateSVM(learneropt{:},'KernelFunction','RBF',...
                     'BoxConstraint',Cvals(c),'KernelScale',Kvals(k)));
                 perf(c,k) = getperf(model,labels);
             end
@@ -280,8 +284,41 @@ switch type
 end
 end
 
-function [perf,cm] = getperf(model,labels)
-predlabels = kfoldPredict(model);
+function [perf,cm,bestthresh] = getperf(model,labels)
+
+if strcmp(model.ScoreType,'probability')
+    [~,~,~,postprob] = kfoldPredict(model);
+
+    predlabels = nan(size(postprob,1),1);
+    for f = 1:model.Partition.NumTestSets
+        trainidx = training(model.Partition,f);
+        testidx = test(model.Partition,f);
+        [x,y,t] = perfcurve(labels(trainidx),postprob(trainidx,end),max(labels(trainidx)));
+        [~,bestthresh] = max(abs(y + (1-x) - 1));
+        bestthresh = t(bestthresh);
+        predlabels(testidx) = double(postprob(testidx,end) > bestthresh);
+    end
+    
+    [x,y,t] = perfcurve(labels,postprob(:,end),max(labels));
+    [~,bestthresh] = max(abs(y + (1-x) - 1));
+    bestthresh = t(bestthresh);    
+else
+    predlabels = kfoldPredict(model);
+    bestthresh = NaN;
+end
+
 cm = confusionmat(labels,predlabels,'order',unique(labels));
-perf = mean( diag( cm ./ repmat(sum(cm,2),1,size(cm,2)) ) );
+perf = cm2perf(cm);
+end
+
+function perf = cm2perf(cm)
+% perf = mean( diag( cm ./ repmat(sum(cm,2),1,size(cm,2)) ) );
+
+for i = 1:size(cm,1)
+    precision(i) = cm(i,i)/(sum(cm(:,i))+eps);
+    recall(i) = cm(i,i)/(sum(cm(i,:))+eps);
+end
+
+perf = 2 * ( (precision .* recall) ./ (precision + recall + eps) );
+perf = mean(perf);
 end
