@@ -32,6 +32,10 @@ if strcmpi(measure,'power')
 elseif strcmpi(measure,'specent')
     load(sprintf('%sgroupdata_%s.mat',filepath,listname),'specent');
     features = specent(:,ismember({sortedlocs.labels},eval(param.changroup)));
+elseif strcmpi(measure,'wpli')
+    load(sprintf('%sgroupdata_%s.mat',filepath,listname),'allcoh');
+    ind_upper = find(triu(ones(size(allcoh,3),size(allcoh,4)),1))';
+    features = allcoh(:,bandidx,ind_upper);    
 elseif strcmpi(measure,'median')
     load(sprintf('%sgroupdata_%s.mat',filepath,listname),'allcoh');
     features = median(allcoh(:,bandidx,ismember({sortedlocs.labels},eval(param.changroup)),ismember({sortedlocs.labels},eval(param.changroup2))),4);

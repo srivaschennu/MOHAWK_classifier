@@ -7,13 +7,14 @@ param = finputcheck(varargin, {
     'mode', 'string', {'cv','holdout','train', 'losocv'}, 'cv'; ...
     'runpca', 'string', {'true','false'}, 'false'; ...
     'prior', 'string', {'empirical','uniform'}, 'uniform'; ...
+    'posterior', 'string', {'on','off'}, 'off'; ...    
     'covariates', 'float', [], [], ...
     });
 
 holdout = 0.15;
 pcaVarExpl = 95/100;
 learneropt = {'Standardize',true};
-clsyfyropt = {'Prior',param.prior,'FitPosterior','on'};
+clsyfyropt = {'Prior',param.prior,'FitPosterior',param.posterior};
 
 switch type
     case 'knn'
@@ -30,14 +31,14 @@ switch type
         hyperparam = {Cvals, Kvals};
         
     case 'tree'
-        Lvals = 1:15;
+        Lvals = 2.^(0:floor(log2(size(features,1)-1)));
         hyperparam = {Lvals};
         
     case {'nbayes' 'nn'}
         hyperparam = {};
 end
 
-innercvparam = [clsyfyropt,{'Kfold',4}];
+innercvparam = {'Kfold',4};
 numcvfolds = NaN;
 if strcmp(param.mode,'cv')
     numcvruns = 25;
@@ -141,7 +142,7 @@ for f = 1:numfolds
     switch type
         case {'knn' 'svm-linear' 'svm-rbf' 'tree' 'nbayes'}
             if ~isempty(hyperparam)
-                perf = gridsearch(trainfeat, trainlabels, type, innercvparam, learneropt, hyperparam);
+                perf = gridsearch(trainfeat, trainlabels, type, clsyfyropt, innercvparam, learneropt, hyperparam);
                 [~,maxidx] = max(perf(:));
             end
             
@@ -160,16 +161,26 @@ for f = 1:numfolds
                     
                 case 'tree'
                     bestL = ind2sub(size(perf),maxidx);
-                    learners = templateTree('MinLeafSize', Lvals(bestL));
+                    learners = templateTree('MaxNumSplits', Lvals(bestL));
                     
                 case 'nbayes'
                     learners = templateNaiveBayes('DistributionNames', 'kernel');
+                    
+                otherwise
+                    error('Classifier type not recognised');
             end
-            [clsyfyr.perf(f),clsyfyr.cm(:,:,f),bestthresh] = getperf(fitcecoc(trainfeat, trainlabels, innercvparam{:}, ...
-                'Learners', learners), trainlabels);
             
-            model = fitcecoc(trainfeat, trainlabels, clsyfyropt{:}, 'Learners', learners);
-            if strcmp(model.ScoreType,'probability')
+            if strcmp(type,'tree')
+                [clsyfyr.perf(f),clsyfyr.cm(:,:,f),bestthresh] = getperf(fitensemble(trainfeat, trainlabels, 'AdaBoostM1', 100, ...
+                    learners, innercvparam{:}, 'LearnRate', 0.1, 'Prior', 'uniform'), trainlabels);
+                model = fitensemble(trainfeat, trainlabels, 'AdaBoostM1', 100, learners, 'LearnRate', 0.1, 'Prior', 'uniform');
+            else
+                [clsyfyr.perf(f),clsyfyr.cm(:,:,f),bestthresh] = getperf(fitcecoc(trainfeat, trainlabels, clsyfyropt{:}, innercvparam{:}, ...
+                    'Learners', learners), trainlabels);
+                model = fitcecoc(trainfeat, trainlabels, clsyfyropt{:}, 'Learners', learners);
+            end
+            
+            if strcmp(model.ScoreType,'junk')
                 [~,~,~,postprob] = predict(model, testfeat);
                 clsyfyr.predlabels(testidx,f) = double(postprob(:,end) > bestthresh);
             else
@@ -228,6 +239,7 @@ end
 clsyfyr.funcopt = param;
 clsyfyr.learneropt = learneropt;
 clsyfyr.cvopt = innercvparam;
+clsyfyr.clsyfyropt = clsyfyropt;
 clsyfyr.numfolds = numfolds;
 clsyfyr.numcvfolds = numcvfolds;
 
@@ -239,14 +251,14 @@ end
 
 end
 
-function perf = gridsearch(features,labels,type,cvopt,learneropt,hyperparam)
+function perf = gridsearch(features,labels,type,clsyfyropt,cvopt,learneropt,hyperparam)
 
 switch type
     case 'knn'
         Nvals = hyperparam{1};
         perf = zeros(size(Nvals));
         for n = 1:length(Nvals)
-            model = fitcecoc(features,labels,cvopt{:}, ...
+            model = fitcecoc(features,labels,clsyfyropt{:},cvopt{:}, ...
                 'Learners',templateKNN(learneropt{:},'NumNeighbors',Nvals(n)));
             perf(n) = getperf(model,labels);
         end
@@ -255,7 +267,7 @@ switch type
         Cvals = hyperparam{1};
         perf = zeros(size(Cvals));
         for c = 1:length(Cvals)
-            model = fitcecoc(features,labels,cvopt{:}, ...
+            model = fitcecoc(features,labels,clsyfyropt{:},cvopt{:}, ...
                 'Learners',templateSVM(learneropt{:},'BoxConstraint',Cvals(c)));
             perf(c) = getperf(model,labels);
         end
@@ -266,7 +278,7 @@ switch type
         perf = zeros(length(Cvals),length(Kvals));
         for c = 1:length(Cvals)
             for k = 1:length(Kvals)
-                model = fitcecoc(features,labels,cvopt{:}, ...
+                model = fitcecoc(features,labels,clsyfyropt{:},cvopt{:}, ...
                     'Learners',templateSVM(learneropt{:},'KernelFunction','RBF',...
                     'BoxConstraint',Cvals(c),'KernelScale',Kvals(k)));
                 perf(c,k) = getperf(model,labels);
@@ -277,8 +289,11 @@ switch type
         Lvals = hyperparam{1};
         perf = zeros(size(Lvals));
         for l = 1:length(Lvals)
-            model = fitcecoc(features,labels,cvopt{:}, ...
-                'Learners',templateTree('MinLeafSize',Lvals(l)));
+%             model = fitcecoc(features,labels,clsyfyropt{:},cvopt{:}, ...
+%                 'Learners',templateTree('MinLeafSize',Lvals(l)));
+
+            model = fitensemble(features,labels,'AdaBoostM1',100, ...
+                templateTree('MaxNumSplits',Lvals(l)),cvopt{:},'LearnRate',0.1,'Prior','uniform');
             perf(l) = getperf(model,labels);
         end
 end
@@ -286,7 +301,7 @@ end
 
 function [perf,cm,bestthresh] = getperf(model,labels)
 
-if strcmp(model.ScoreType,'probability')
+if strcmp(model.ScoreType,'junk')
     [~,~,~,postprob] = kfoldPredict(model);
 
     predlabels = nan(size(postprob,1),1);

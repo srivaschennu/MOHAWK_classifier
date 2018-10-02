@@ -14,8 +14,11 @@ saveclassifier(clust_job,clsyfyrinfo,suffix);
 [clust_job5,clsyfyrinfo5] = runclassifierjob('betadoc','phoenix','trainclassifier',{'nbayes','runpca','true','mode','cv'},'group','crsdiag');
 [clust_job2,clsyfyrinfo2] = runclassifierjob('betadoc','phoenix','trainclassifier',{'svm-rbf','runpca','false','mode','cv'},'group','crsdiag');
 
-[clust_job,clsyfyrinfo] = runclassifierjob('allnewsubj','phoenix','trainclassifier',{'nbayes','runpca','false','mode','cv'});
-saveclassifier(clust_job,clsyfyrinfo,'allnewsubj_nbayes_UWS_MCS-_cv');
+[clust_job,clsyfyrinfo] = runclassifierjob('betadoc','phoenix','trainclassifier',{'tree','runpca','false','mode','cv'},'group','crsdiag');
+saveclassifier(clust_job,clsyfyrinfo,'betadoc_tree_UWS_MCS-_cv');
+
+[~,clsyfyrinfo] = runclassifierjob('allnewsubj','local','trainclassifier',{'tree','runpca','false','mode','cv'});
+saveclassifier(clust_job,clsyfyrinfo,'allnewsubj_svm-rbf_UWS_MCS-_cv');
 
 saveclassifier(clust_job,clsyfyrinfo,'betadoc_svm-linear_UWS_MCS-_cv','group','crsdiag');
 saveclassifier(clust_job3,clsyfyrinfo3,'betadoc_tree_UWS_MCS-_cv','group','crsdiag');
