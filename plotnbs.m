@@ -37,7 +37,18 @@ facecolorlist = [
     1 1 0.5
     ];
 
-load(sprintf('%s/%s_%s_stats.mat',filepath,listname,bands{bandidx}));
+load(sprintf('%s/%s_%s_stats.mat',filepath,listname,bands{bandidx}), 'glm');
+load(sprintf('%s/groupdata_%s.mat',filepath,listname), 'allcoh');
+
+fprintf('Running permutation statistics...\n');
+siglevel = 0.05;
+stats.alpha = 0.05;
+stats.thresh = quantile(glm.test_stat(1,:), 1-siglevel);
+stats.size = 'extent';
+stats.N = size(allcoh,3);
+stats.test_stat = glm.test_stat;
+
+[~,n_nets,netmask,netpval] = evalc('NBSstats(stats)');
 
 if n_nets == 0
     fprintf('No significant network components found.\n');
@@ -48,7 +59,11 @@ load(sprintf('%s/groupdata_%s.mat',filepath,listname));
 
 corrmat = zeros(size(allcoh,3),size(allcoh,4));
 ind_upper = find(triu(ones(size(allcoh,3),size(allcoh,4)),1))';
-corrmat(ind_upper) = test_stat(1,:);
+
+% corrmat(ind_upper) = glm.test_stat(1,:);
+
+corrmat = squeeze(mean(allcoh(:,bandidx,:,:),1));
+
 corrmat(~netmask{1}) = 0;
 sumcorr = sum(corrmat(logical(netmask{1})));
 corrmat = triu(corrmat,1)+triu(corrmat,1)';
@@ -56,7 +71,7 @@ corrmat = triu(corrmat,1)+triu(corrmat,1)';
 fprintf('Cluster t-statistic = %.2f, p-value = %.4f.\n', sumcorr, netpval);
 
 %% plot 3d graph
-plotgraph3d(corrmat,'plotqt',0,'arcs','strength','lhfactor',1.25);
+plotgraph3d(corrmat,'plotqt',0,'arcs','strength','lhfactor',1.5);
 
 set(gcf,'Name',sprintf('group %s: %s band',listname,bands{bandidx}));
 camva(8);
