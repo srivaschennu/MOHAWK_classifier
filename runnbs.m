@@ -33,10 +33,11 @@ trange = 0.9:-0.1:0.1;
 testdata = squeeze(getfeatures(listname,measure,bandidx,'trange',trange));
 
 %select only patients
-testdata = testdata(subjlist.crsdiag < 5,:);
-design_matrix = design_matrix(subjlist.crsdiag < 5,:);
+testdata = testdata(subjlist.crsdiag < 4,:);
+design_matrix = design_matrix(subjlist.crsdiag < 4,:);
 
-fprintf('Estimating GLM with %d permutations...\n', nperm);
+fprintf('Estimating GLM with %d permutations and %d covariates on %d subjects...\n', ...
+    nperm, size(covariates,1), size(testdata,1));
 glm.X = design_matrix;
 glm.y = testdata;
 glm.contrast = cell2mat(covariates(:,1))';
