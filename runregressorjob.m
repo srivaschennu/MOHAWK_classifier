@@ -1,10 +1,7 @@
-function [clust_job,clsyfyrinfo,outputs] = runclassifierjob(listname,runmode,funcname,funcargs,varargin)
+function [clust_job,clsyfyrinfo,outputs] = runregressorjob(listname,runmode,funcname,funcargs,varargin)
 
 param = finputcheck(varargin, {
-    'group', 'string', [], 'crsdiagwithcmd'; ...
-    'groups', 'integer', [], [0 1]; ...
-    'regroup', 'integer', [], []; ...
-    'groupnames', 'cell', {}, {'UWS','MCS-'}; ...
+    'group', 'string', [], 'crsr'; ...
     'downsample', 'string', {'true','false'}, 'false'; ...
     'covariates', 'string', {} ''; ...
     'suffix', 'string', '', ''; ...
@@ -34,10 +31,6 @@ loadpaths
 load(sprintf('%s/groupdata_%s.mat',filepath,listname),'subjlist');
 groupvar = subjlist.(param.group);
 
-if ~isempty(param.regroup)
-    groupvar(groupvar == param.regroup(1)) = param.regroup(2);
-end
-
 trange = 0.7:-0.1:0.1;
 
 bands = {
@@ -52,24 +45,24 @@ featlist = {
 %     'power',3
 %     'median',1
 %     'median',2
-    'median',3
-    'clustering',1
-    'clustering',2
-    'clustering',3
-    'characteristic path length',1
-    'characteristic path length',2
-    'characteristic path length',3
-    'centrality',1
-    'centrality',2
-    'centrality',3
-    'degree',1
-    'degree',2
-    'degree',3
-    'modularity',1
-    'modularity',2
-    'modularity',3
-    'participation coefficient',1
-    'participation coefficient',2
+%     'median',3
+%     'clustering',1
+%     'clustering',2
+%     'clustering',3
+%     'characteristic path length',1
+%     'characteristic path length',2
+%     'characteristic path length',3
+%     'centrality',1
+%     'centrality',2
+%     'centrality',3
+%     'degree',1
+%     'degree',2
+%     'degree',3
+%     'modularity',1
+%     'modularity',2
+%     'modularity',3
+%     'participation coefficient',1
+%     'participation coefficient',2
     'participation coefficient',3
     'modular span',1
     'modular span',2
@@ -78,11 +71,6 @@ featlist = {
     'mutual information',2
     'mutual information',3    
     };
-
-selgroupidx = ismember(groupvar,param.groups);
-groupvar = groupvar(selgroupidx);
-[~,~,groupvar] = unique(groupvar);
-groupvar = groupvar-1;
 
 %% -- INITIALISATION
 
@@ -146,7 +134,6 @@ for f = 1:size(featlist,1)
     bandidx = featlist{f,2};
     
     features = getfeatures(listname,measure,bandidx,'trange',trange);
-    features = features(selgroupidx,:,:);
     
     features = permute(features,[1 3 2]);
     
