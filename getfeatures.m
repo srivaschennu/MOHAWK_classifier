@@ -61,7 +61,7 @@ else
     m = strcmpi(measure,graph(:,1));
     
     if strcmpi(measure,'mutual information')
-        features = mean(graph{m,weiorbin}(:,subjlist.crsdiag == 5,bandidx,threshidx),4);
+        features = mean(graph{m,weiorbin}(:,:,bandidx,threshidx),4);
         features = permute(features,[1 3 2]);
     else
         features = squeeze(graph{m,weiorbin}(:,bandidx,:,:));

@@ -63,12 +63,12 @@ featlist = {
 %     'modularity',3
 %     'participation coefficient',1
 %     'participation coefficient',2
-    'participation coefficient',3
-    'modular span',1
-    'modular span',2
-    'modular span',3
-    'mutual information',1
-    'mutual information',2
+%     'participation coefficient',3
+%     'modular span',1
+%     'modular span',2
+%     'modular span',3
+%     'mutual information',1
+%     'mutual information',2
     'mutual information',3    
     };
 
