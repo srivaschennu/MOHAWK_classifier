@@ -15,31 +15,33 @@ rng('default');
 
 load(sprintf('%s/groupdata_%s.mat',filepath,listname));
 
-covariates = {
-    1   'age'
-    0   'gender'
-    };
-
 % covariates = {
-%     0   'crsdiag'
+%     1   'age'
+%     0   'gender'
+%     };
+
+covariates = {
+    1   'nextcrsdiag'
 %     1   'crsr'
 %     0   'age'
 %     0   'tbi'
 %     0   'subjnum'
 %     0   'days_onset'
-% };
+};
 
 design_matrix = subjlist.(covariates{1,2});
 for c = 2:size(covariates,1)
     design_matrix = cat(2,design_matrix,subjlist.(covariates{c,2}));
 end
-
 trange = 0.9:-0.1:0.1;
 testdata = squeeze(getfeatures(listname,measure,bandidx,'trange',trange));
 
 %select only patients
 % testdata = testdata(subjlist.crsdiag < 4,:);
 % design_matrix = design_matrix(subjlist.crsdiag < 4,:);
+
+testdata = testdata(~sum((isnan(design_matrix)),2),:);
+design_matrix = design_matrix(~sum((isnan(design_matrix)),2), :);
 
 fprintf('Estimating GLM with %d permutations and %d covariates on %d subjects...\n', ...
     nperm, size(covariates,1), size(testdata,1));
