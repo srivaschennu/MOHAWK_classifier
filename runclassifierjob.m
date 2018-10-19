@@ -1,4 +1,4 @@
-function [clust_job,clsyfyrinfo,outputs] = runclassifierjob(listname,runmode,funcname,funcargs,varargin)
+    function [clust_job,clsyfyrinfo,outputs] = runclassifierjob(listname,runmode,funcname,funcargs,varargin)
 
 param = finputcheck(varargin, {
     'group', 'string', [], 'crsdiagwithcmd'; ...
