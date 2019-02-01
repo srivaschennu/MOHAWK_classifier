@@ -123,7 +123,7 @@ for c = 1:numruns
         confmat(:,:,k,c) = cm;
         
         normcm = cm ./ repmat(sum(cm,2),1,size(cm,2));
-        combperf(k,c) = mean(diag(normcm));
+        combperf(k,c) = nanmean(diag(normcm));
         combclassperf(k,:,c) = diag(normcm);
         
         allbel(:,:,k,c) = bel;
@@ -167,7 +167,7 @@ ylabel('Accuracy','FontName','Helvetica','FontSize',fontsize);
 [~,bestk] = max(combperf);
 plot([bestk bestk],ylim,...
     'LineStyle','-','LineWidth',1.5,'Color','red','DisplayName','Peak accuracy');
-
+pause(0.5);
 % figure('Color','white');
 % plot(roc(bestk,1).fpr,roc(bestk,1).tpr,'LineWidth',2);
 % set(gca,'FontName','Helvetica','FontSize',fontsize);
@@ -176,6 +176,7 @@ plot([bestk bestk],ylim,...
 
 plotconfusionmat(sum(confmat(:,:,bestk,:),4),groupnames);
 plotconfusionmat(sum(clsyfyr(perfsort(1)).cm,3),groupnames);
+pause(0.5);
 
 figure('Color','white');
 figpos = get(gcf,'Position');

@@ -12,9 +12,11 @@ loadpaths
 load(sprintf('%sclsyfyr_%s_%s.mat',filepath,param.group,trainfile));
 
 load(sprintf('%sgroupdata_%s.mat',filepath,listname),'subjlist');
-loadcovariates
 
-groupvar = eval(param.group);
+subjlist.crsdiagwithcmd = subjlist.crsdiag;
+subjlist.crsdiagwithcmd(subjlist.crsdiag == 0 & (subjlist.tennis == 1 | subjlist.pet == 1)) = 6;
+
+groupvar = subjlist.(param.group);
 
 selgroupidx = ismember(groupvar,param.groups);
 groupvar = groupvar(selgroupidx);
