@@ -35,7 +35,7 @@ load(sprintf('%s/groupdata_%s.mat',filepath,listname),'subjlist');
 groupvar = subjlist.(param.group);
 
 if ~isempty(param.regroup)
-    groupvar(groupvar == param.regroup(1)) = param.regroup(2);
+    groupvar(ismember(groupvar,param.regroup(1))) = param.regroup(2);
 end
 
 trange = 0.7:-0.1:0.1;
@@ -52,24 +52,24 @@ featlist = {
 %     'power',3
 %     'median',1
 %     'median',2
-    'median',3
-    'clustering',1
-    'clustering',2
-    'clustering',3
-    'characteristic path length',1
-    'characteristic path length',2
-    'characteristic path length',3
-    'centrality',1
-    'centrality',2
-    'centrality',3
-    'degree',1
-    'degree',2
-    'degree',3
-    'modularity',1
-    'modularity',2
-    'modularity',3
-    'participation coefficient',1
-    'participation coefficient',2
+%     'median',3
+%     'clustering',1
+%     'clustering',2
+%     'clustering',3
+%     'characteristic path length',1
+%     'characteristic path length',2
+%     'characteristic path length',3
+%     'centrality',1
+%     'centrality',2
+%     'centrality',3
+%     'degree',1
+%     'degree',2
+%     'degree',3
+%     'modularity',1
+%     'modularity',2
+%     'modularity',3
+%     'participation coefficient',1
+%     'participation coefficient',2
     'participation coefficient',3
     'modular span',1
     'modular span',2
